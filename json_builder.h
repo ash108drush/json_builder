@@ -10,31 +10,36 @@ public:
     Builder() = default;
     ~Builder() = default;
     Builder& StartDict(){
-        CheckValidCall();
-        in_dict_.push_back(dict_level_);
+        CheckValidCall("start dict");
+
+        after_key_= false;
+        dict_start_.push_back(true);
+
         json::Dict dict;
+        dict.insert({"not initialized","true"});
         Node* node = new Node(dict);
         nodes_stack_.push_back(node);
         return *this;
 
     };
     Builder& EndDict(){
-        if(in_dict_.empty()){
-            throw std::logic_error("Dict not started");
+
+        if(dict_start_.empty()){
+            throw std::logic_error("Dict not started" );
         }
+        dict_start_.pop_back();
         size_t counter = 0;
-        int skip = in_dict_[0];
-        in_dict_.erase(in_dict_.begin());
-        int step = 0;
         Node * current_node = nullptr;
         auto iter_array = nodes_stack_.rbegin();
         for(;iter_array != nodes_stack_.rend();++iter_array){
             current_node = *iter_array;
             if(current_node->IsDict()){
-                if(step == skip){
-                    break;
+                Dict dict = current_node->AsDict();
+                if(!dict.empty()){
+                    if(dict.find("not initialized") != dict.end()){
+                        break;
+                    }
                 }
-                ++step;
             }
             ++counter;
         }
@@ -76,39 +81,38 @@ public:
         return *this;
     };
     Builder& StartArray(){
-        CheckValidCall();
-        if(in_dict_.size() >0){
-            std::fill(in_dict_.begin(), in_dict_.end(), 0);
-        }
-        in_array_.push_back(in_array_.size());
-        json::Array  array;
+        CheckValidCall("start array");
+        array_start_.push_back(true);
+        json::Array  array{"not initialized"};
         Node* node = new Node(array);
         nodes_stack_.push_back(node);
+        after_key_ = false;
         return *this;
     }
     Builder& EndArray(){
-        if(in_array_.empty()){
-            throw std::logic_error("Array not started");
+
+        if(array_start_.empty()){
+            throw std::logic_error("Array not started" );
         }
+        array_start_.pop_back();
 
         size_t counter = 0;
         Node * current_node = nullptr;
-        int skip = in_array_[0];
-        in_array_.erase(in_array_.begin());
-        int step = 0;
+
         auto iter_array = nodes_stack_.rbegin();
         for(;iter_array != nodes_stack_.rend();++iter_array){
             current_node = *iter_array;
             if(current_node->IsArray()){
-                if(step == skip){
-                    break;
+                Array arr = current_node->AsArray();
+                if(!arr.empty()){
+                    if(current_node->AsArray()[0] == "not initialized"){
+                        break;
+                    }
                 }
-                ++step;
+
             }
             ++counter;
         }
-
-
 
 
         if(counter == nodes_stack_.size()) {
@@ -134,7 +138,7 @@ public:
         return *this;
     };
     Builder& Key(std::string key ){
-        if(in_dict_.empty()){
+        if(dict_start_.empty()){
             throw std::logic_error("Key not in dict");
         }
         if(after_key_){
@@ -147,7 +151,8 @@ public:
 
     }
     Builder& Value(Node node){
-        CheckValidCall();
+        //array_start_ = false;
+        CheckValidCall("add value");
         Node* node_ptr = new Node(node);
         nodes_stack_.push_back(node_ptr);
         after_key_ = false;
@@ -163,7 +168,8 @@ public:
     }
 
 private:
-    bool CheckValidCall(){
+    bool CheckValidCall(std::string origin){
+
         if(first_call_){
             first_call_ = false;
             return true;
@@ -171,17 +177,18 @@ private:
         if( after_key_ ){
             return true;
         }
-        if(!in_array_.empty()){
+        if(!array_start_.empty() ){
             return true;
         }
-        throw std::logic_error("Неверный вызов");
+    std::cout << first_call_ <<after_key_ << array_start_.empty() << std::endl;
+        throw std::logic_error("Неверный вызов " + origin);
 
     }
     bool first_call_ = true;
     bool after_key_ = false;
-    std::vector<int> in_array_;
-    std::vector<int> in_dict_;
-    int dict_level_ = 0;
+    std::vector<bool> array_start_;
+    std::vector<bool> dict_start_;
+
     Node root_;
     std::vector<Node*> nodes_stack_;
 

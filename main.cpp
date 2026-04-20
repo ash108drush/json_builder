@@ -35,5 +35,34 @@ int main() {
         },
         cout
     );
+
+    json::Print(
+        json::Document{
+            json::Builder{}.StartArray().StartArray().EndArray().Value(1).EndArray().Build()
+        },
+        cout
+        );
     cout << endl;
+
+
+    json::Print(
+        json::Document{
+            json::Builder{}.StartDict().Key("1").StartDict().EndDict().Key("2").Value(2).EndDict().Build()
+        },
+        cout
+        );
+    cout << endl;
+
+    json::Print(
+        json::Document{
+              json::Builder{}.StartDict().Key("1").StartArray().EndArray().Key("2").Value(2).EndDict().Build()
+        },
+        cout
+        );
+    cout << endl;
+
+
+
+
+
 }
